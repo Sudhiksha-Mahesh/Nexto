@@ -1,0 +1,35 @@
+{
+  "manifest_version": 3,
+  "name": "Nexto",
+  "description": "Smart task queue Chrome extension",
+  "version": "1.0.0",
+  "permissions": ["storage", "tabs", "idle", "activeTab"],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_popup": "index.html",
+    "default_title": "Nexto"
+  },
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  },
+  "commands": {
+    "add_task": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+A",
+        "mac": "Command+Shift+A"
+      },
+      "description": "Add a task (open Nexto popup)"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
