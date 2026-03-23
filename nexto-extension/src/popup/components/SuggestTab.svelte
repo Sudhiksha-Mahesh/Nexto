@@ -4,8 +4,19 @@
   import { taskStore } from '../../store/tasks';
   import { levelBadgeClass, levelLabel } from '../../lib/levelStyles';
 
-  let availableMinutes = 30;
+  type TimeUnit = 'min' | 'hr';
+
+  let timeAmount = 30;
+  let timeUnit: TimeUnit = 'min';
   let userEnergy: UserEnergy = 'medium';
+
+  /** Parsed amount for math (handles empty / invalid input). */
+  $: rawAmount = typeof timeAmount === 'string' ? parseFloat(timeAmount) : Number(timeAmount);
+
+  $: availableMinutes =
+    timeUnit === 'hr'
+      ? Math.max(1, Math.round(rawAmount * 60))
+      : Math.max(1, Math.round(rawAmount));
 
   $: ranked = rankTasksForSlot($taskStore.tasks, {
     availableMinutes,
@@ -29,6 +40,14 @@
     const overdue = task.deadline < Date.now();
     return overdue ? `Overdue · was ${formatDeadline(task.deadline)}` : `Due ${formatDeadline(task.deadline)}`;
   }
+
+  /** Human-readable window for empty-state copy. */
+  $: slotDescription =
+    timeUnit === 'hr'
+      ? `${rawAmount} hr (${availableMinutes} min)`
+      : `${availableMinutes} min`;
+
+  $: timeValid = Number.isFinite(rawAmount) && rawAmount > 0;
 </script>
 
 <div class="space-y-3">
@@ -39,38 +58,48 @@
 
   <section class="rounded-lg border border-slate-200 bg-white p-3 shadow-card dark:border-slate-700 dark:bg-slate-900">
     <h2 class="mb-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Your slot</h2>
-    <div class="grid grid-cols-2 gap-2">
-      <label class="block">
-        <span class="mb-0.5 block text-xs text-slate-600 dark:text-slate-400">Available time (min)</span>
+    <div class="mb-2 grid grid-cols-[1fr_auto] gap-2">
+      <label class="block min-w-0">
+        <span class="mb-0.5 block text-xs text-slate-600 dark:text-slate-400">Available time</span>
         <input
           class="w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-900 outline-none focus:ring-1 focus:ring-slate-400 dark:border-slate-600 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-slate-500"
           type="number"
-          min="1"
-          step="1"
-          bind:value={availableMinutes}
+          min={timeUnit === 'hr' ? 0.25 : 1}
+          step={timeUnit === 'hr' ? 0.25 : 1}
+          bind:value={timeAmount}
         />
       </label>
-      <label class="block">
-        <span class="mb-0.5 block text-xs text-slate-600 dark:text-slate-400">Your energy</span>
+      <label class="block w-[5.25rem] shrink-0">
+        <span class="mb-0.5 block text-xs text-slate-600 dark:text-slate-400">Unit</span>
         <select
           class="w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-900 outline-none focus:ring-1 focus:ring-slate-400 dark:border-slate-600 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-slate-500"
-          bind:value={userEnergy}
+          bind:value={timeUnit}
         >
-          <option value="low">Low — light tasks only</option>
-          <option value="medium">Medium</option>
-          <option value="high">High — any task</option>
+          <option value="min">Mins</option>
+          <option value="hr">Hrs</option>
         </select>
       </label>
     </div>
+    <label class="block">
+      <span class="mb-0.5 block text-xs text-slate-600 dark:text-slate-400">Your energy</span>
+      <select
+        class="w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-900 outline-none focus:ring-1 focus:ring-slate-400 dark:border-slate-600 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-slate-500"
+        bind:value={userEnergy}
+      >
+        <option value="low">Low — light tasks only</option>
+        <option value="medium">Medium</option>
+        <option value="high">High — any task</option>
+      </select>
+    </label>
   </section>
 
-  {#if !Number.isFinite(availableMinutes) || availableMinutes < 1}
+  {#if !timeValid}
     <p class="rounded-lg border border-dashed border-amber-200 bg-amber-50/80 px-3 py-3 text-center text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
-      Set available time to at least 1 minute.
+      Enter a positive amount of time.
     </p>
   {:else if ranked.length === 0}
     <p class="rounded-lg border border-dashed border-slate-200 bg-white/80 px-3 py-4 text-center text-xs text-slate-600 dark:border-slate-600 dark:bg-slate-900/80 dark:text-slate-400">
-      No open tasks fit <span class="font-medium text-slate-800 dark:text-slate-200">{availableMinutes} min</span> with
+      No open tasks fit <span class="font-medium text-slate-800 dark:text-slate-200">{slotDescription}</span> with
       <span class="font-medium text-slate-800 dark:text-slate-200">{levelLabel(userEnergy)}</span> energy. Try more time,
       higher energy, or shorter estimates on your tasks.
     </p>

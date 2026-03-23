@@ -3,8 +3,11 @@
   import { fromDatetimeLocalValue } from '../../lib/datetimeLocal';
   import { taskStore } from '../../store/tasks';
 
+  type TimeUnit = 'min' | 'hr';
+
   let title = '';
-  let estimated_time = 25;
+  let timeAmount = 25;
+  let timeUnit: TimeUnit = 'min';
   let priority: Task['priority'] = 'medium';
   let energy: Task['energy'] = 'medium';
   let tagsRaw = '';
@@ -12,10 +15,17 @@
   let deadlineLocal = '';
 
   $: trimmedTitle = title.trim();
+  $: rawAmount = typeof timeAmount === 'string' ? parseFloat(timeAmount) : Number(timeAmount);
+  $: estimatedMinutes =
+    timeUnit === 'hr'
+      ? Math.round(rawAmount * 60)
+      : Math.round(rawAmount);
   $: valid =
     trimmedTitle.length > 0 &&
-    Number.isFinite(estimated_time) &&
-    estimated_time > 0;
+    Number.isFinite(rawAmount) &&
+    rawAmount > 0 &&
+    Number.isFinite(estimatedMinutes) &&
+    estimatedMinutes >= 1;
 
   function parseTags(raw: string): string[] {
     return raw
@@ -34,13 +44,14 @@
       title: trimmedTitle,
       priority,
       energy,
-      estimated_time,
+      estimated_time: estimatedMinutes,
       tags: parseTags(tagsRaw),
       ...(deadline != null ? { deadline } : {}),
     });
 
     title = '';
-    estimated_time = 25;
+    timeAmount = 25;
+    timeUnit = 'min';
     priority = 'medium';
     energy = 'medium';
     tagsRaw = '';
@@ -65,18 +76,28 @@
     />
   </label>
 
-  <div class="mb-2 grid grid-cols-2 gap-2">
-    <label class="block">
-      <span class="mb-0.5 block text-xs text-slate-600 dark:text-slate-400">Est. (min)</span>
+  <div class="mb-2 grid grid-cols-[minmax(0,1fr)_5.25rem_minmax(0,1fr)] gap-2">
+    <label class="block min-w-0">
+      <span class="mb-0.5 block text-xs text-slate-600 dark:text-slate-400">Estimate</span>
       <input
         class="w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-900 outline-none focus:ring-1 focus:ring-slate-400 dark:border-slate-600 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-slate-500"
         type="number"
-        min="1"
-        step="1"
-        bind:value={estimated_time}
+        min={timeUnit === 'hr' ? 0.25 : 1}
+        step={timeUnit === 'hr' ? 0.25 : 1}
+        bind:value={timeAmount}
       />
     </label>
-    <label class="block">
+    <label class="block w-[5.25rem] shrink-0 justify-self-stretch">
+      <span class="mb-0.5 block text-xs text-slate-600 dark:text-slate-400">Unit</span>
+      <select
+        class="w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-900 outline-none focus:ring-1 focus:ring-slate-400 dark:border-slate-600 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-slate-500"
+        bind:value={timeUnit}
+      >
+        <option value="min">Mins</option>
+        <option value="hr">Hrs</option>
+      </select>
+    </label>
+    <label class="block min-w-0">
       <span class="mb-0.5 block text-xs text-slate-600 dark:text-slate-400">Priority</span>
       <select
         class="w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-900 outline-none focus:ring-1 focus:ring-slate-400 dark:border-slate-600 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-slate-500"
