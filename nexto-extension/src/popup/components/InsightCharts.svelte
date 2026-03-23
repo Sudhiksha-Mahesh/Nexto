@@ -21,12 +21,25 @@
       const v = values[i];
       if (v <= 0) continue;
       const sweep = (v / sum) * 360;
+      // A 360deg arc has identical start/end points and can render as invisible.
+      if (sweep >= 359.999) {
+        out.push({ d: donutRing(cx, cy, rOut, rIn), fill: colors[i] });
+        break;
+      }
       const a0 = angle;
       const a1 = angle + sweep;
       out.push({ d: donutArc(cx, cy, rOut, rIn, a0, a1), fill: colors[i] });
       angle = a1;
     }
     return out;
+  }
+
+  function donutRing(cx: number, cy: number, rOut: number, rIn: number): string {
+    const xoR = cx + rOut;
+    const xoL = cx - rOut;
+    const xiR = cx + rIn;
+    const xiL = cx - rIn;
+    return `M ${xoR} ${cy} A ${rOut} ${rOut} 0 1 1 ${xoL} ${cy} A ${rOut} ${rOut} 0 1 1 ${xoR} ${cy} L ${xiR} ${cy} A ${rIn} ${rIn} 0 1 0 ${xiL} ${cy} A ${rIn} ${rIn} 0 1 0 ${xiR} ${cy} Z`;
   }
 
   function donutArc(
