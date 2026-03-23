@@ -32,6 +32,13 @@ export type RankedTask = {
   reasons: string[];
 };
 
+export type SuggestPartition = {
+  /** Tasks with `estimated_time <= availableMinutes` (energy-feasible), best first */
+  fits: RankedTask[];
+  /** Tasks that need more time than the slot (energy-feasible) — for splitting / chunking */
+  larger: RankedTask[];
+};
+
 /** Task is doable if its required energy does not exceed what the user has. */
 export function energyFeasible(userEnergy: UserEnergy, taskEnergy: UserEnergy): boolean {
   return ENERGY_RANK[taskEnergy] <= ENERGY_RANK[userEnergy];
@@ -63,21 +70,39 @@ function priorityPoints(p: Task['priority']): number {
   return PRIORITY_RANK[p] * 120;
 }
 
+function sortRanked(a: RankedTask, b: RankedTask): number {
+  if (b.score !== a.score) return b.score - a.score;
+  const ad = a.task.deadline;
+  const bd = b.task.deadline;
+  if (ad != null && bd != null && ad !== bd) return ad - bd;
+  if (ad != null && bd == null) return -1;
+  if (ad == null && bd != null) return 1;
+  return PRIORITY_RANK[b.task.priority] - PRIORITY_RANK[a.task.priority];
+}
+
 /**
  * Open tasks that fit in `availableMinutes` and match energy, sorted by score (highest first).
  */
 export function rankTasksForSlot(tasks: Task[], input: SuggestInputs): RankedTask[] {
+  return partitionTasksForSuggest(tasks, input).fits;
+}
+
+/**
+ * Energy-feasible open tasks split into those that fit the time window vs those that exceed it
+ * (larger list is for splitting / multi-session work).
+ */
+export function partitionTasksForSuggest(tasks: Task[], input: SuggestInputs): SuggestPartition {
   const { availableMinutes, userEnergy, nowMs, activeTaskId } = input;
 
   if (!Number.isFinite(availableMinutes) || availableMinutes <= 0) {
-    return [];
+    return { fits: [], larger: [] };
   }
 
   const open = tasks.filter((t) => t.status !== 'done');
-  const out: RankedTask[] = [];
+  const fits: RankedTask[] = [];
+  const larger: RankedTask[] = [];
 
   for (const task of open) {
-    if (task.estimated_time > availableMinutes) continue;
     if (!energyFeasible(userEnergy, task.energy)) continue;
 
     const reasons: string[] = [];
@@ -95,23 +120,29 @@ export function rankTasksForSlot(tasks: Task[], input: SuggestInputs): RankedTas
       reasons.push('In progress');
     }
 
-    // Slight preference for using the window well (optional tie-breaker feel)
-    const utilization = task.estimated_time / availableMinutes;
-    score += Math.round(utilization * 40);
-    if (utilization >= 0.7) reasons.push('Fits your time well');
+    if (task.estimated_time <= availableMinutes) {
+      const utilization = task.estimated_time / availableMinutes;
+      score += Math.round(utilization * 40);
+      if (utilization >= 0.7) reasons.push('Fits your time well');
 
-    out.push({ task, score, reasons });
+      fits.push({ task, score, reasons });
+    } else {
+      const over = task.estimated_time - availableMinutes;
+      // Prefer tasks only slightly too big (easier to split this session)
+      score -= Math.min(over * 3, 800);
+      reasons.push(`${task.estimated_time} min total`);
+      reasons.push(`+${over} min past your slot — split or use a longer window`);
+      const chunks = Math.ceil(task.estimated_time / availableMinutes);
+      if (chunks > 1) {
+        reasons.push(`~${chunks}× ${availableMinutes} min sessions if you split evenly`);
+      }
+
+      larger.push({ task, score, reasons });
+    }
   }
 
-  out.sort((a, b) => {
-    if (b.score !== a.score) return b.score - a.score;
-    const ad = a.task.deadline;
-    const bd = b.task.deadline;
-    if (ad != null && bd != null && ad !== bd) return ad - bd;
-    if (ad != null && bd == null) return -1;
-    if (ad == null && bd != null) return 1;
-    return PRIORITY_RANK[b.task.priority] - PRIORITY_RANK[a.task.priority];
-  });
+  fits.sort(sortRanked);
+  larger.sort(sortRanked);
 
-  return out;
+  return { fits, larger };
 }
