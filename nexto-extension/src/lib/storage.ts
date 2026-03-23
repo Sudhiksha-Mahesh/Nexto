@@ -2,6 +2,14 @@ import type { Task } from '../types/task';
 
 const TASKS_KEY = 'nexto_tasks';
 const ACTIVE_TASK_ID_KEY = 'nexto_active_task_id';
+const STATE_META_KEY = 'nexto_state_meta';
+
+export type LocalTaskBundle = {
+  tasks: Task[];
+  activeTaskId: string | null;
+  /** Bumped on user edits; used with server `nexto_state.updated_at` for merge */
+  stateUpdatedAt: number;
+};
 
 type LegacyTask = {
   id: string;
@@ -30,6 +38,11 @@ function migrateTask(raw: unknown): Task | null {
   if (hasNewShape) {
     const status = raw.status;
     if (status !== 'todo' && status !== 'doing' && status !== 'done') return null;
+    const updated_at =
+      typeof raw.updated_at === 'number' && Number.isFinite(raw.updated_at)
+        ? raw.updated_at
+        : created_at;
+
     const task: Task = {
       id,
       title,
@@ -39,6 +52,7 @@ function migrateTask(raw: unknown): Task | null {
       tags: (raw.tags as unknown[]).filter((t): t is string => typeof t === 'string'),
       status,
       created_at,
+      updated_at,
       started_at: typeof raw.started_at === 'number' ? raw.started_at : undefined,
       completed_at: typeof raw.completed_at === 'number' ? raw.completed_at : undefined,
     };
@@ -61,11 +75,12 @@ function migrateTask(raw: unknown): Task | null {
     tags: [],
     status: st,
     created_at: legacy.created_at,
+    updated_at: legacy.created_at,
   };
 }
 
-export async function loadTaskState(): Promise<{ tasks: Task[]; activeTaskId: string | null }> {
-  const data = await chrome.storage.local.get([TASKS_KEY, ACTIVE_TASK_ID_KEY]);
+export async function loadTaskState(): Promise<LocalTaskBundle> {
+  const data = await chrome.storage.local.get([TASKS_KEY, ACTIVE_TASK_ID_KEY, STATE_META_KEY]);
   const rawTasks = data[TASKS_KEY];
   const tasks = Array.isArray(rawTasks)
     ? (rawTasks.map(migrateTask).filter((t): t is Task => t !== null))
@@ -82,12 +97,19 @@ export async function loadTaskState(): Promise<{ tasks: Task[]; activeTaskId: st
     activeTaskId = null;
   }
 
-  return { tasks, activeTaskId };
+  const metaRaw = data[STATE_META_KEY];
+  let stateUpdatedAt = 0;
+  if (isRecord(metaRaw) && typeof metaRaw.stateUpdatedAt === 'number') {
+    stateUpdatedAt = metaRaw.stateUpdatedAt;
+  }
+
+  return { tasks, activeTaskId, stateUpdatedAt };
 }
 
-export async function saveTaskState(tasks: Task[], activeTaskId: string | null): Promise<void> {
+export async function saveTaskState(bundle: LocalTaskBundle): Promise<void> {
   await chrome.storage.local.set({
-    [TASKS_KEY]: tasks,
-    [ACTIVE_TASK_ID_KEY]: activeTaskId,
+    [TASKS_KEY]: bundle.tasks,
+    [ACTIVE_TASK_ID_KEY]: bundle.activeTaskId,
+    [STATE_META_KEY]: { stateUpdatedAt: bundle.stateUpdatedAt },
   });
 }

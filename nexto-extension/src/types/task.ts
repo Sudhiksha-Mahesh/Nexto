@@ -7,6 +7,8 @@ export type Task = {
   tags: string[];
   status: 'todo' | 'doing' | 'done';
   created_at: number;
+  /** Unix ms — bumped on every change; used for Supabase merge sync */
+  updated_at: number;
   /** Unix ms — optional due date/time */
   deadline?: number;
   started_at?: number;

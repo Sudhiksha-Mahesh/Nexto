@@ -1,9 +1,16 @@
 import { writable } from 'svelte/store';
 import type { NewTaskInput, Task } from '../types/task';
-import { loadTaskState, saveTaskState } from '../lib/storage';
+import { loadTaskState, saveTaskState, type LocalTaskBundle } from '../lib/storage';
+import { isSupabaseConfigured } from '../lib/supabase';
+import { schedulePushToSupabase, syncFromSupabase } from '../lib/remoteSync';
+import { syncStatus } from '../lib/syncStatus';
 
 function randomId(): string {
   return crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+function now(): number {
+  return Date.now();
 }
 
 export type TaskStoreState = {
@@ -16,8 +23,18 @@ const initialState: TaskStoreState = {
   activeTaskId: null,
 };
 
+function toBundle(state: TaskStoreState, stateUpdatedAt: number): LocalTaskBundle {
+  return {
+    tasks: state.tasks,
+    activeTaskId: state.activeTaskId,
+    stateUpdatedAt,
+  };
+}
+
 function persist(state: TaskStoreState): void {
-  void saveTaskState(state.tasks, state.activeTaskId);
+  const bundle = toBundle(state, now());
+  void saveTaskState(bundle);
+  schedulePushToSupabase(bundle);
 }
 
 function createTasksStore() {
@@ -26,14 +43,32 @@ function createTasksStore() {
   return {
     subscribe,
     async hydrate(): Promise<void> {
-      const loaded = await loadTaskState();
-      set({ tasks: loaded.tasks, activeTaskId: loaded.activeTaskId });
+      const local = await loadTaskState();
+      set({ tasks: local.tasks, activeTaskId: local.activeTaskId });
+
+      if (!isSupabaseConfigured()) {
+        syncStatus.set({ state: 'local' });
+        return;
+      }
+
+      try {
+        const merged = await syncFromSupabase(local);
+        set({ tasks: merged.tasks, activeTaskId: merged.activeTaskId });
+        await saveTaskState(merged);
+      } catch (e) {
+        console.warn('[Nexto] hydrate remote sync', e);
+        syncStatus.set({
+          state: 'error',
+          message: e instanceof Error ? e.message : 'Sync failed',
+        });
+      }
     },
 
     addTask(input: NewTaskInput): void {
       const title = input.title.trim();
       if (!title || input.estimated_time <= 0) return;
 
+      const ts = now();
       const task: Task = {
         id: randomId(),
         title,
@@ -42,7 +77,8 @@ function createTasksStore() {
         estimated_time: input.estimated_time,
         tags: input.tags,
         status: 'todo',
-        created_at: Date.now(),
+        created_at: ts,
+        updated_at: ts,
         ...(input.deadline != null ? { deadline: input.deadline } : {}),
       };
 
@@ -74,13 +110,14 @@ function createTasksStore() {
         const target = s.tasks.find((t) => t.id === id);
         if (!target || target.status === 'done') return s;
 
-        const now = Date.now();
+        const t0 = now();
         const tasks = s.tasks.map((t) => {
           if (t.id === id) {
             return {
               ...t,
               status: 'doing' as const,
-              started_at: now,
+              started_at: t0,
+              updated_at: t0,
             };
           }
           if (s.activeTaskId && t.id === s.activeTaskId && t.id !== id) {
@@ -88,6 +125,7 @@ function createTasksStore() {
               ...t,
               status: 'todo' as const,
               started_at: undefined,
+              updated_at: t0,
             };
           }
           return t;
@@ -103,12 +141,14 @@ function createTasksStore() {
       update((s) => {
         if (!s.activeTaskId) return s;
         const id = s.activeTaskId;
+        const t0 = now();
         const tasks = s.tasks.map((t) => {
           if (t.id !== id) return t;
           return {
             ...t,
             status: 'todo' as const,
             started_at: undefined,
+            updated_at: t0,
           };
         });
         const next: TaskStoreState = { tasks, activeTaskId: null };
@@ -119,7 +159,7 @@ function createTasksStore() {
 
     completeTask(id: string): void {
       update((s) => {
-        const now = Date.now();
+        const t0 = now();
         let activeTaskId = s.activeTaskId;
         if (activeTaskId === id) activeTaskId = null;
 
@@ -128,8 +168,9 @@ function createTasksStore() {
           return {
             ...t,
             status: 'done' as const,
-            completed_at: now,
+            completed_at: t0,
             started_at: undefined,
+            updated_at: t0,
           };
         });
 

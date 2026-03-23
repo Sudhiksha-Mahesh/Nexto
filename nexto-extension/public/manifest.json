@@ -4,6 +4,7 @@
   "description": "Smart task queue Chrome extension",
   "version": "1.0.0",
   "permissions": ["storage", "tabs", "idle", "activeTab"],
+  "host_permissions": ["https://*.supabase.co/*"],
   "background": {
     "service_worker": "background.js",
     "type": "module"
