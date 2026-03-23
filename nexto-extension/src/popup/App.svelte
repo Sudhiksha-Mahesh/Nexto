@@ -1,9 +1,11 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { initAuth } from '../lib/auth';
   import { isSupabaseConfigured } from '../lib/supabase';
   import { syncStatus } from '../lib/syncStatus';
   import { theme, toggleTheme } from '../lib/theme';
   import { taskStore } from '../store/tasks';
+  import AuthPanel from './components/AuthPanel.svelte';
   import TasksTab from './components/TasksTab.svelte';
   import StatsTab from './components/StatsTab.svelte';
   import SuggestTab from './components/SuggestTab.svelte';
@@ -15,6 +17,7 @@
   onMount(() => {
     if (isSupabaseConfigured()) {
       syncStatus.set({ state: 'syncing' });
+      void initAuth();
     }
     void taskStore.hydrate();
   });
@@ -47,6 +50,8 @@
       {/if}
     </button>
   </header>
+
+  <AuthPanel />
 
   <div
     class="mb-3 grid grid-cols-3 gap-0.5 rounded-lg border border-slate-200 bg-slate-100/80 p-0.5 dark:border-slate-600 dark:bg-slate-900/80"

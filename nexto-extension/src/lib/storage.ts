@@ -11,6 +11,15 @@ export type LocalTaskBundle = {
   stateUpdatedAt: number;
 };
 
+function scopeSuffix(userId: string | null): string {
+  if (!userId) return 'local';
+  return `user_${userId.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
+}
+
+function scopedKey(base: string, userId: string | null): string {
+  return `${base}__${scopeSuffix(userId)}`;
+}
+
 type LegacyTask = {
   id: string;
   title: string;
@@ -79,15 +88,26 @@ function migrateTask(raw: unknown): Task | null {
   };
 }
 
-export async function loadTaskState(): Promise<LocalTaskBundle> {
-  const data = await chrome.storage.local.get([TASKS_KEY, ACTIVE_TASK_ID_KEY, STATE_META_KEY]);
-  const rawTasks = data[TASKS_KEY];
+export async function loadTaskState(userId: string | null = null): Promise<LocalTaskBundle> {
+  const tasksKey = scopedKey(TASKS_KEY, userId);
+  const activeKey = scopedKey(ACTIVE_TASK_ID_KEY, userId);
+  const metaKey = scopedKey(STATE_META_KEY, userId);
+  const data = await chrome.storage.local.get([
+    tasksKey,
+    activeKey,
+    metaKey,
+    // fallback for older unscoped local installs
+    TASKS_KEY,
+    ACTIVE_TASK_ID_KEY,
+    STATE_META_KEY,
+  ]);
+  const rawTasks = data[tasksKey] ?? (userId == null ? data[TASKS_KEY] : undefined);
   const tasks = Array.isArray(rawTasks)
     ? (rawTasks.map(migrateTask).filter((t): t is Task => t !== null))
     : [];
 
   let activeTaskId: string | null = null;
-  const rawActive = data[ACTIVE_TASK_ID_KEY];
+  const rawActive = data[activeKey] ?? (userId == null ? data[ACTIVE_TASK_ID_KEY] : undefined);
   if (typeof rawActive === 'string' && rawActive.length > 0) {
     activeTaskId = rawActive;
   }
@@ -97,7 +117,7 @@ export async function loadTaskState(): Promise<LocalTaskBundle> {
     activeTaskId = null;
   }
 
-  const metaRaw = data[STATE_META_KEY];
+  const metaRaw = data[metaKey] ?? (userId == null ? data[STATE_META_KEY] : undefined);
   let stateUpdatedAt = 0;
   if (isRecord(metaRaw) && typeof metaRaw.stateUpdatedAt === 'number') {
     stateUpdatedAt = metaRaw.stateUpdatedAt;
@@ -106,10 +126,13 @@ export async function loadTaskState(): Promise<LocalTaskBundle> {
   return { tasks, activeTaskId, stateUpdatedAt };
 }
 
-export async function saveTaskState(bundle: LocalTaskBundle): Promise<void> {
+export async function saveTaskState(bundle: LocalTaskBundle, userId: string | null = null): Promise<void> {
+  const tasksKey = scopedKey(TASKS_KEY, userId);
+  const activeKey = scopedKey(ACTIVE_TASK_ID_KEY, userId);
+  const metaKey = scopedKey(STATE_META_KEY, userId);
   await chrome.storage.local.set({
-    [TASKS_KEY]: bundle.tasks,
-    [ACTIVE_TASK_ID_KEY]: bundle.activeTaskId,
-    [STATE_META_KEY]: { stateUpdatedAt: bundle.stateUpdatedAt },
+    [tasksKey]: bundle.tasks,
+    [activeKey]: bundle.activeTaskId,
+    [metaKey]: { stateUpdatedAt: bundle.stateUpdatedAt },
   });
 }

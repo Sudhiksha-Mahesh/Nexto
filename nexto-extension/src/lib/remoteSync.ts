@@ -1,6 +1,6 @@
 import type { Task } from '../types/task';
 import type { LocalTaskBundle } from './storage';
-import { getSupabase, isSupabaseConfigured } from './supabase';
+import { isSupabaseConfigured, getSupabase } from './supabase';
 import { syncStatus } from './syncStatus';
 
 function asInt(v: unknown): number | null {
@@ -50,48 +50,6 @@ function rowToTask(row: Record<string, unknown>): Task | null {
   const completed_at = asInt(row.completed_at);
   if (completed_at != null) task.completed_at = completed_at;
   return task;
-}
-
-export type EnsureUserResult =
-  | { ok: true; userId: string }
-  | { ok: false; error: string };
-
-/**
- * Anonymous auth must be ON: Supabase Dashboard → Authentication → Providers → Anonymous.
- */
-export async function ensureSupabaseUser(): Promise<EnsureUserResult> {
-  const supabase = getSupabase();
-  if (!supabase) return { ok: false, error: 'Supabase client not configured (check VITE_* in .env and rebuild).' };
-
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-
-  if (session?.user?.id) return { ok: true, userId: session.user.id };
-
-  const signInAnon = supabase.auth.signInAnonymously?.bind(supabase.auth);
-  if (typeof signInAnon !== 'function') {
-    return {
-      ok: false,
-      error: 'This Supabase JS version has no signInAnonymously(). Run npm update @supabase/supabase-js.',
-    };
-  }
-
-  const { data, error } = await signInAnon();
-  if (error) {
-    console.warn('[Nexto] Anonymous sign-in:', error.message, error);
-    return {
-      ok: false,
-      error: `${error.message} — turn on Authentication → Providers → Anonymous in Supabase, then reload the extension.`,
-    };
-  }
-
-  const userId = data.session?.user?.id ?? data.user?.id;
-  if (!userId) {
-    return { ok: false, error: 'Anonymous sign-in succeeded but returned no user id. Try reloading the popup.' };
-  }
-
-  return { ok: true, userId };
 }
 
 export function mergeBundles(local: LocalTaskBundle, remote: LocalTaskBundle): LocalTaskBundle {
@@ -237,53 +195,57 @@ export async function pushFullSnapshot(userId: string, bundle: LocalTaskBundle):
 }
 
 let pushTimer: ReturnType<typeof setTimeout> | null = null;
+let pushUserId: string | null = null;
 
 /** Push immediately (clears pending debounced push). */
-export async function flushRemotePush(bundle: LocalTaskBundle): Promise<boolean> {
+export async function flushRemotePush(bundle: LocalTaskBundle, userId: string | null): Promise<boolean> {
   if (!isSupabaseConfigured()) return false;
+  if (!userId) return false;
   if (pushTimer) {
     clearTimeout(pushTimer);
     pushTimer = null;
-  }
-  const auth = await ensureSupabaseUser();
-  if (!auth.ok) {
-    syncStatus.set({ state: 'error', message: auth.error });
-    return false;
+    pushUserId = null;
   }
   syncStatus.set({ state: 'syncing' });
-  return pushFullSnapshot(auth.userId, bundle);
+  return pushFullSnapshot(userId, bundle);
 }
 
-export function schedulePushToSupabase(bundle: LocalTaskBundle, delayMs = 600): void {
+export function schedulePushToSupabase(
+  bundle: LocalTaskBundle,
+  userId: string | null,
+  delayMs = 600,
+): void {
   if (!isSupabaseConfigured()) return;
+  if (!userId) return;
 
   if (pushTimer) clearTimeout(pushTimer);
+  pushUserId = userId;
   pushTimer = setTimeout(() => {
     pushTimer = null;
-    void flushRemotePush(bundle);
+    const uid = pushUserId;
+    pushUserId = null;
+    void flushRemotePush(bundle, uid);
   }, delayMs);
 }
 
-export async function syncFromSupabase(local: LocalTaskBundle): Promise<LocalTaskBundle> {
+export async function syncFromSupabase(local: LocalTaskBundle, userId: string | null): Promise<LocalTaskBundle> {
   if (!isSupabaseConfigured()) {
+    syncStatus.set({ state: 'local' });
+    return local;
+  }
+  if (!userId) {
     syncStatus.set({ state: 'local' });
     return local;
   }
 
   syncStatus.set({ state: 'syncing' });
-  const auth = await ensureSupabaseUser();
-  if (!auth.ok) {
-    syncStatus.set({ state: 'error', message: auth.error });
-    return local;
-  }
-
-  const remote = await pullRemoteBundle(auth.userId);
+  const remote = await pullRemoteBundle(userId);
   if (!remote) {
     syncStatus.set({ state: 'error', message: 'Could not load tasks from Supabase.' });
     return local;
   }
 
   const merged = mergeBundles(local, remote);
-  await pushFullSnapshot(auth.userId, merged);
+  await pushFullSnapshot(userId, merged);
   return merged;
 }

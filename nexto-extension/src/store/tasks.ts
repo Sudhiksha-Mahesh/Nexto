@@ -4,6 +4,7 @@ import { loadTaskState, saveTaskState, type LocalTaskBundle } from '../lib/stora
 import { isSupabaseConfigured } from '../lib/supabase';
 import { schedulePushToSupabase, syncFromSupabase } from '../lib/remoteSync';
 import { syncStatus } from '../lib/syncStatus';
+import { getCurrentSupabaseUserId } from '../lib/auth';
 
 function randomId(): string {
   return crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -31,30 +32,36 @@ function toBundle(state: TaskStoreState, stateUpdatedAt: number): LocalTaskBundl
   };
 }
 
-function persist(state: TaskStoreState): void {
-  const bundle = toBundle(state, now());
-  void saveTaskState(bundle);
-  schedulePushToSupabase(bundle);
-}
-
 function createTasksStore() {
   const { subscribe, set, update } = writable<TaskStoreState>(initialState);
+  let scopedUserId: string | null = null;
+
+  function persist(state: TaskStoreState): void {
+    const bundle = toBundle(state, now());
+    void saveTaskState(bundle, scopedUserId);
+    schedulePushToSupabase(bundle, scopedUserId);
+  }
 
   return {
     subscribe,
     async hydrate(): Promise<void> {
-      const local = await loadTaskState();
+      scopedUserId = isSupabaseConfigured() ? await getCurrentSupabaseUserId() : null;
+      const local = await loadTaskState(scopedUserId);
       set({ tasks: local.tasks, activeTaskId: local.activeTaskId });
 
       if (!isSupabaseConfigured()) {
         syncStatus.set({ state: 'local' });
         return;
       }
+      if (!scopedUserId) {
+        syncStatus.set({ state: 'local' });
+        return;
+      }
 
       try {
-        const merged = await syncFromSupabase(local);
+        const merged = await syncFromSupabase(local, scopedUserId);
         set({ tasks: merged.tasks, activeTaskId: merged.activeTaskId });
-        await saveTaskState(merged);
+        await saveTaskState(merged, scopedUserId);
       } catch (e) {
         console.warn('[Nexto] hydrate remote sync', e);
         syncStatus.set({
