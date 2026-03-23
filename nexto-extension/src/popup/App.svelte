@@ -6,8 +6,9 @@
   import { taskStore } from '../store/tasks';
   import TasksTab from './components/TasksTab.svelte';
   import StatsTab from './components/StatsTab.svelte';
+  import SuggestTab from './components/SuggestTab.svelte';
 
-  type TabId = 'tasks' | 'insights';
+  type TabId = 'tasks' | 'insights' | 'suggest';
 
   let activeTab: TabId = 'tasks';
 
@@ -48,7 +49,7 @@
   </header>
 
   <div
-    class="mb-3 flex rounded-lg border border-slate-200 bg-slate-100/80 p-0.5 dark:border-slate-600 dark:bg-slate-900/80"
+    class="mb-3 grid grid-cols-3 gap-0.5 rounded-lg border border-slate-200 bg-slate-100/80 p-0.5 dark:border-slate-600 dark:bg-slate-900/80"
     role="tablist"
     aria-label="Main sections"
   >
@@ -56,7 +57,7 @@
       type="button"
       role="tab"
       aria-selected={activeTab === 'tasks'}
-      class="flex-1 rounded-md px-2 py-1.5 text-xs font-medium transition {activeTab === 'tasks'
+      class="rounded-md px-1.5 py-1.5 text-[11px] font-medium leading-tight transition sm:text-xs {activeTab === 'tasks'
         ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-800 dark:text-slate-50'
         : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100'}"
       on:click={() => (activeTab = 'tasks')}
@@ -67,12 +68,23 @@
       type="button"
       role="tab"
       aria-selected={activeTab === 'insights'}
-      class="flex-1 rounded-md px-2 py-1.5 text-xs font-medium transition {activeTab === 'insights'
+      class="rounded-md px-1.5 py-1.5 text-[11px] font-medium leading-tight transition sm:text-xs {activeTab === 'insights'
         ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-800 dark:text-slate-50'
         : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100'}"
       on:click={() => (activeTab = 'insights')}
     >
       Insights
+    </button>
+    <button
+      type="button"
+      role="tab"
+      aria-selected={activeTab === 'suggest'}
+      class="rounded-md px-1.5 py-1.5 text-[11px] font-medium leading-tight transition sm:text-xs {activeTab === 'suggest'
+        ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-800 dark:text-slate-50'
+        : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100'}"
+      on:click={() => (activeTab = 'suggest')}
+    >
+      Suggest
     </button>
   </div>
 
@@ -80,9 +92,13 @@
     <div role="tabpanel" aria-label="Tasks">
       <TasksTab />
     </div>
-  {:else}
+  {:else if activeTab === 'insights'}
     <div role="tabpanel" aria-label="Insights">
       <StatsTab />
+    </div>
+  {:else}
+    <div role="tabpanel" aria-label="Suggest a task">
+      <SuggestTab />
     </div>
   {/if}
 
