@@ -137,6 +137,53 @@ function createTasksStore() {
       });
     },
 
+    /**
+     * Pause the active timer: subtracts elapsed time from `estimated_time`, clears `started_at`.
+     * Task stays `doing` and active — resumed via `startTask` (same id).
+     */
+    pauseTask(): void {
+      update((s) => {
+        if (!s.activeTaskId) return s;
+        const id = s.activeTaskId;
+        const t0 = now();
+        const tasks = s.tasks.map((t) => {
+          if (t.id !== id) return t;
+          if (t.status !== 'doing' || t.started_at == null) return t;
+          const elapsedMs = t0 - t.started_at;
+          const elapsedMin = Math.floor(elapsedMs / 60000);
+          const remaining = Math.max(0, t.estimated_time - elapsedMin);
+          return {
+            ...t,
+            estimated_time: remaining,
+            started_at: undefined,
+            updated_at: t0,
+          };
+        });
+        const next: TaskStoreState = { tasks, activeTaskId: id };
+        persist(next);
+        return next;
+      });
+    },
+
+    /** Set remaining minutes for the active `doing` task (e.g. while paused or to correct the budget). */
+    setActiveRemainingMinutes(minutes: number): void {
+      const m = Math.round(Number(minutes));
+      if (!Number.isFinite(m) || m < 0) return;
+      update((s) => {
+        if (!s.activeTaskId) return s;
+        const id = s.activeTaskId;
+        const t0 = now();
+        const tasks = s.tasks.map((t) => {
+          if (t.id !== id) return t;
+          if (t.status !== 'doing') return t;
+          return { ...t, estimated_time: m, updated_at: t0 };
+        });
+        const next: TaskStoreState = { ...s, tasks };
+        persist(next);
+        return next;
+      });
+    },
+
     stopTask(): void {
       update((s) => {
         if (!s.activeTaskId) return s;

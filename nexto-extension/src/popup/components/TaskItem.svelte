@@ -1,11 +1,17 @@
 <script lang="ts">
+  import { onDestroy, onMount } from 'svelte';
   import type { Task } from '../../types/task';
   import { taskStore } from '../../store/tasks';
   import { levelBadgeClass, levelLabel } from '../../lib/levelStyles';
 
   export let task: Task;
 
+  let now = Date.now();
+  let tick: ReturnType<typeof setInterval> | undefined;
+
   $: isActive = $taskStore.activeTaskId === task.id;
+  $: isRunning = isActive && task.status === 'doing' && task.started_at != null;
+  $: isPaused = isActive && task.status === 'doing' && task.started_at == null;
   $: deadlineMs = task.deadline;
   $: overdue =
     deadlineMs != null && deadlineMs < Date.now() && task.status !== 'done';
@@ -16,6 +22,27 @@
       timeStyle: 'short',
     });
   }
+
+  $: sessionMinLeft =
+    isRunning && task.started_at != null
+      ? Math.max(0, task.estimated_time - Math.floor((now - task.started_at) / 60000))
+      : null;
+
+  $: {
+    if (typeof tick !== 'undefined') {
+      clearInterval(tick);
+      tick = undefined;
+    }
+    if (isRunning) {
+      tick = setInterval(() => {
+        now = Date.now();
+      }, 1000);
+    }
+  }
+
+  onDestroy(() => {
+    if (typeof tick !== 'undefined') clearInterval(tick);
+  });
 </script>
 
 <article
@@ -25,7 +52,13 @@
 >
   <div class="mb-2 flex items-start justify-between gap-2">
     <h3 class="text-sm font-semibold leading-snug text-slate-900 dark:text-slate-50">{task.title}</h3>
-    {#if isActive}
+    {#if isPaused}
+      <span
+        class="shrink-0 rounded bg-amber-600 px-1.5 py-0.5 text-[10px] font-medium uppercase text-white dark:bg-amber-500 dark:text-amber-950"
+      >
+        Paused
+      </span>
+    {:else if isActive}
       <span
         class="shrink-0 rounded bg-slate-900 px-1.5 py-0.5 text-[10px] font-medium uppercase text-white dark:bg-slate-100 dark:text-slate-900"
       >
@@ -35,7 +68,15 @@
   </div>
 
   <div class="mb-2 space-y-0.5 text-xs">
-    <p class="text-slate-500 dark:text-slate-400">{task.estimated_time} min estimated</p>
+    <p class="text-slate-500 dark:text-slate-400">
+      {#if isPaused}
+        ~{task.estimated_time} min left · paused
+      {:else if sessionMinLeft != null}
+        ~{sessionMinLeft} min left · {task.estimated_time} min this session
+      {:else}
+        {task.estimated_time} min estimated
+      {/if}
+    </p>
     {#if deadlineMs != null}
       <p class={overdue ? 'font-medium text-red-700 dark:text-red-400' : 'text-slate-600 dark:text-slate-300'}>
         Due {formatDeadline(deadlineMs)}{#if overdue}<span class="ml-1 font-semibold">(overdue)</span>{/if}
@@ -64,10 +105,10 @@
     <button
       class="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-800 hover:bg-slate-50 disabled:opacity-40 dark:border-slate-600 dark:bg-slate-950 dark:text-slate-200 dark:hover:bg-slate-800"
       type="button"
-      disabled={isActive}
+      disabled={isActive && !isPaused}
       on:click={() => taskStore.startTask(task.id)}
     >
-      Start
+      {isPaused ? 'Resume' : 'Start'}
     </button>
     <button
       class="rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-900 hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-100 dark:hover:bg-emerald-900/40"
