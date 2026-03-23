@@ -2,6 +2,9 @@ import type { Task } from '../types/task';
 
 export type LevelCounts = Record<'low' | 'medium' | 'high', number>;
 
+/** Local calendar day, oldest first (for charts). */
+export type DailyCompletion = { date: string; label: string; count: number };
+
 export type TaskStats = {
   total: number;
   open: number;
@@ -17,6 +20,8 @@ export type TaskStats = {
   doneByPriority: LevelCounts;
   avgCompletionMs: number | null;
   topTags: { tag: string; count: number }[];
+  /** Completions per local day, last 14 days */
+  dailyCompletions: DailyCompletion[];
 };
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -27,6 +32,25 @@ function emptyLevels(): LevelCounts {
 
 function inc(level: 'low' | 'medium' | 'high', map: LevelCounts): void {
   map[level] += 1;
+}
+
+function localDateKey(ms: number): string {
+  const d = new Date(ms);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function lastNDaysLocalKeys(now: number, n: number): string[] {
+  const keys: string[] = [];
+  for (let i = n - 1; i >= 0; i--) {
+    const d = new Date(now);
+    d.setHours(0, 0, 0, 0);
+    d.setDate(d.getDate() - i);
+    keys.push(localDateKey(d.getTime()));
+  }
+  return keys;
 }
 
 /** Aggregate stats from all stored tasks (including completed — kept for history). */
@@ -90,6 +114,19 @@ export function buildTaskStats(tasks: Task[]): TaskStats {
     .sort((a, b) => b.count - a.count)
     .slice(0, 8);
 
+  const dailyKeys = lastNDaysLocalKeys(now, 14);
+  const dailyMap = new Map<string, number>(dailyKeys.map((k) => [k, 0]));
+  for (const t of tasks) {
+    if (t.status !== 'done' || t.completed_at == null) continue;
+    const k = localDateKey(t.completed_at);
+    if (dailyMap.has(k)) dailyMap.set(k, (dailyMap.get(k) ?? 0) + 1);
+  }
+  const dailyCompletions: DailyCompletion[] = dailyKeys.map((date) => ({
+    date,
+    label: date.slice(5),
+    count: dailyMap.get(date) ?? 0,
+  }));
+
   return {
     total: tasks.length,
     open,
@@ -105,6 +142,7 @@ export function buildTaskStats(tasks: Task[]): TaskStats {
     doneByPriority,
     avgCompletionMs,
     topTags,
+    dailyCompletions,
   };
 }
 
