@@ -49,15 +49,15 @@
 </script>
 
 <form
-  class="rounded-lg border border-slate-200 bg-white p-3 shadow-card"
+  class="rounded-lg border border-slate-200 bg-white p-3 shadow-card dark:border-slate-700 dark:bg-slate-900"
   on:submit={handleSubmit}
 >
-  <h2 class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">New task</h2>
+  <h2 class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">New task</h2>
 
   <label class="mb-2 block">
-    <span class="mb-0.5 block text-xs text-slate-600">Title</span>
+    <span class="mb-0.5 block text-xs text-slate-600 dark:text-slate-400">Title</span>
     <input
-      class="w-full rounded-md border border-slate-200 px-2 py-1.5 text-sm outline-none ring-slate-400 focus:ring-1"
+      class="w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-900 outline-none ring-slate-400 focus:ring-1 dark:border-slate-600 dark:bg-slate-950 dark:text-slate-100 dark:ring-slate-500"
       type="text"
       placeholder="What needs doing?"
       bind:value={title}
@@ -67,9 +67,9 @@
 
   <div class="mb-2 grid grid-cols-2 gap-2">
     <label class="block">
-      <span class="mb-0.5 block text-xs text-slate-600">Est. (min)</span>
+      <span class="mb-0.5 block text-xs text-slate-600 dark:text-slate-400">Est. (min)</span>
       <input
-        class="w-full rounded-md border border-slate-200 px-2 py-1.5 text-sm outline-none focus:ring-1 focus:ring-slate-400"
+        class="w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-900 outline-none focus:ring-1 focus:ring-slate-400 dark:border-slate-600 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-slate-500"
         type="number"
         min="1"
         step="1"
@@ -77,9 +77,9 @@
       />
     </label>
     <label class="block">
-      <span class="mb-0.5 block text-xs text-slate-600">Priority</span>
+      <span class="mb-0.5 block text-xs text-slate-600 dark:text-slate-400">Priority</span>
       <select
-        class="w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-sm outline-none focus:ring-1 focus:ring-slate-400"
+        class="w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-900 outline-none focus:ring-1 focus:ring-slate-400 dark:border-slate-600 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-slate-500"
         bind:value={priority}
       >
         <option value="low">Low</option>
@@ -90,18 +90,18 @@
   </div>
 
   <label class="mb-2 block">
-    <span class="mb-0.5 block text-xs text-slate-600">Deadline (optional)</span>
+    <span class="mb-0.5 block text-xs text-slate-600 dark:text-slate-400">Deadline (optional)</span>
     <input
-      class="w-full rounded-md border border-slate-200 px-2 py-1.5 text-sm outline-none focus:ring-1 focus:ring-slate-400"
+      class="w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-900 outline-none focus:ring-1 focus:ring-slate-400 dark:border-slate-600 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-slate-500"
       type="datetime-local"
       bind:value={deadlineLocal}
     />
   </label>
 
   <label class="mb-2 block">
-    <span class="mb-0.5 block text-xs text-slate-600">Energy</span>
+    <span class="mb-0.5 block text-xs text-slate-600 dark:text-slate-400">Energy</span>
     <select
-      class="w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-sm outline-none focus:ring-1 focus:ring-slate-400"
+      class="w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-900 outline-none focus:ring-1 focus:ring-slate-400 dark:border-slate-600 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-slate-500"
       bind:value={energy}
     >
       <option value="low">Low</option>
@@ -111,9 +111,9 @@
   </label>
 
   <label class="mb-2 block">
-    <span class="mb-0.5 block text-xs text-slate-600">Tags</span>
+    <span class="mb-0.5 block text-xs text-slate-600 dark:text-slate-400">Tags</span>
     <input
-      class="w-full rounded-md border border-slate-200 px-2 py-1.5 text-sm outline-none focus:ring-1 focus:ring-slate-400"
+      class="w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-900 outline-none focus:ring-1 focus:ring-slate-400 dark:border-slate-600 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-slate-500"
       type="text"
       placeholder="comma, separated"
       bind:value={tagsRaw}
@@ -121,7 +121,7 @@
   </label>
 
   <button
-    class="w-full rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+    class="w-full rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
     type="submit"
     disabled={!valid}
   >

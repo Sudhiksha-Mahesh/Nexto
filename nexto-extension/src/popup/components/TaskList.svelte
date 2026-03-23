@@ -14,10 +14,12 @@
 </script>
 
 <section class="mt-3">
-  <h2 class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Tasks</h2>
+  <h2 class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Tasks</h2>
 
   {#if list.length === 0}
-    <p class="rounded-lg border border-dashed border-slate-200 bg-white/80 px-3 py-4 text-center text-xs text-slate-500">
+    <p
+      class="rounded-lg border border-dashed border-slate-200 bg-white/80 px-3 py-4 text-center text-xs text-slate-500 dark:border-slate-600 dark:bg-slate-900/80 dark:text-slate-400"
+    >
       No open tasks. Add one above.
     </p>
   {:else}

@@ -10,16 +10,10 @@
 
 html,
 body {
-  @apply m-0 bg-slate-50 text-slate-900 antialiased;
-  width: 380px;
-  min-width: 380px;
-  max-width: 380px;
-  min-height: 500px;
-  overflow-x: hidden;
+  @apply m-0 bg-slate-50 text-slate-900 antialiased dark:bg-slate-950 dark:text-slate-100;
 }
 
 #app {
   display: block;
   width: 100%;
-  min-height: 500px;
 }

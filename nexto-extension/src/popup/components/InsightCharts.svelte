@@ -101,32 +101,42 @@
 </script>
 
 {#if stats.total > 0}
-  <section class="rounded-lg border border-slate-200 bg-white p-3 shadow-card">
-    <h2 class="mb-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Charts</h2>
+  <section class="rounded-lg border border-slate-200 bg-white p-3 shadow-card dark:border-slate-700 dark:bg-slate-900">
+    <h2 class="mb-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Charts</h2>
 
     {#if openTotal > 0}
       <div class="mb-3 grid grid-cols-2 gap-3">
         <div>
-          <p class="mb-1 text-center text-[10px] font-medium text-slate-600">Open · priority</p>
+          <p class="mb-1 text-center text-[10px] font-medium text-slate-600 dark:text-slate-400">Open · priority</p>
           <svg viewBox="0 0 100 100" class="mx-auto h-28 w-28" aria-hidden="true">
             {#each priSlices as s (s.d)}
-              <path d={s.d} fill={s.fill} stroke="#fff" stroke-width="0.5" />
+              <path
+                d={s.d}
+                fill={s.fill}
+                class="stroke-white dark:stroke-slate-900"
+                stroke-width="0.5"
+              />
             {/each}
           </svg>
-          <div class="mt-1 flex justify-center gap-2 text-[9px] text-slate-500">
+          <div class="mt-1 flex justify-center gap-2 text-[9px] text-slate-500 dark:text-slate-400">
             <span>L {stats.openByPriority.low}</span>
             <span>M {stats.openByPriority.medium}</span>
             <span>H {stats.openByPriority.high}</span>
           </div>
         </div>
         <div>
-          <p class="mb-1 text-center text-[10px] font-medium text-slate-600">Open · energy</p>
+          <p class="mb-1 text-center text-[10px] font-medium text-slate-600 dark:text-slate-400">Open · energy</p>
           <svg viewBox="0 0 100 100" class="mx-auto h-28 w-28" aria-hidden="true">
             {#each enSlices as s (s.d)}
-              <path d={s.d} fill={s.fill} stroke="#fff" stroke-width="0.5" />
+              <path
+                d={s.d}
+                fill={s.fill}
+                class="stroke-white dark:stroke-slate-900"
+                stroke-width="0.5"
+              />
             {/each}
           </svg>
-          <div class="mt-1 flex justify-center gap-2 text-[9px] text-slate-500">
+          <div class="mt-1 flex justify-center gap-2 text-[9px] text-slate-500 dark:text-slate-400">
             <span>L {stats.openByEnergy.low}</span>
             <span>M {stats.openByEnergy.medium}</span>
             <span>H {stats.openByEnergy.high}</span>
@@ -136,18 +146,18 @@
     {/if}
 
     <div class="mb-3">
-      <p class="mb-1 text-[10px] font-medium text-slate-600">Completions per day (14 d)</p>
-      <div class="flex h-24 items-end gap-px border-b border-slate-200 pb-0.5">
+      <p class="mb-1 text-[10px] font-medium text-slate-600 dark:text-slate-400">Completions per day (14 d)</p>
+      <div class="flex h-24 items-end gap-px border-b border-slate-200 pb-0.5 dark:border-slate-600">
         {#each stats.dailyCompletions as d (d.date)}
           <div class="group flex min-w-0 flex-1 flex-col items-center justify-end" title="{d.date}: {d.count}">
             <span
-              class="w-full max-w-[14px] rounded-t bg-slate-600 transition group-hover:bg-slate-800"
+              class="w-full max-w-[14px] rounded-t bg-slate-600 transition group-hover:bg-slate-800 dark:bg-slate-500 dark:group-hover:bg-slate-400"
               style="height: {(d.count / dailyMax) * 100}%; min-height: {d.count > 0 ? '4px' : '0'}"
             ></span>
           </div>
         {/each}
       </div>
-      <div class="mt-0.5 flex justify-between text-[7px] text-slate-400">
+      <div class="mt-0.5 flex justify-between text-[7px] text-slate-400 dark:text-slate-500">
         <span>{stats.dailyCompletions[0]?.label ?? ''}</span>
         <span>{stats.dailyCompletions[stats.dailyCompletions.length - 1]?.label ?? ''}</span>
       </div>
@@ -155,15 +165,20 @@
 
     {#if stats.done > 0}
       <div class="mb-3">
-        <p class="mb-1 text-center text-[10px] font-medium text-slate-600">Done · priority</p>
+        <p class="mb-1 text-center text-[10px] font-medium text-slate-600 dark:text-slate-400">Done · priority</p>
         <div class="flex justify-center">
           <svg viewBox="0 0 100 100" class="h-28 w-28" aria-hidden="true">
             {#each doneSlices as s (s.d)}
-              <path d={s.d} fill={s.fill} stroke="#fff" stroke-width="0.5" />
+              <path
+                d={s.d}
+                fill={s.fill}
+                class="stroke-white dark:stroke-slate-900"
+                stroke-width="0.5"
+              />
             {/each}
           </svg>
         </div>
-        <div class="flex justify-center gap-2 text-[9px] text-slate-500">
+        <div class="flex justify-center gap-2 text-[9px] text-slate-500 dark:text-slate-400">
           <span>L {stats.doneByPriority.low}</span>
           <span>M {stats.doneByPriority.medium}</span>
           <span>H {stats.doneByPriority.high}</span>
@@ -173,18 +188,18 @@
 
     {#if top5.length > 0}
       <div>
-        <p class="mb-2 text-[10px] font-medium text-slate-600">Top tags</p>
+        <p class="mb-2 text-[10px] font-medium text-slate-600 dark:text-slate-400">Top tags</p>
         <div class="space-y-1.5">
           {#each top5 as t (t.tag)}
             <div class="flex items-center gap-2 text-[10px]">
-              <span class="w-20 shrink-0 truncate text-slate-700" title={t.tag}>{t.tag}</span>
-              <div class="h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-slate-100">
+              <span class="w-20 shrink-0 truncate text-slate-700 dark:text-slate-300" title={t.tag}>{t.tag}</span>
+              <div class="h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
                 <div
-                  class="h-full rounded-full bg-sky-600"
+                  class="h-full rounded-full bg-sky-600 dark:bg-sky-500"
                   style="width: {(t.count / tagMax) * 100}%"
                 ></div>
               </div>
-              <span class="w-4 shrink-0 text-right tabular-nums text-slate-500">{t.count}</span>
+              <span class="w-4 shrink-0 text-right tabular-nums text-slate-500 dark:text-slate-400">{t.count}</span>
             </div>
           {/each}
         </div>

@@ -1,0 +1,15 @@
+/* Popup shell only — options page uses full viewport */
+html,
+body {
+  width: 380px;
+  min-width: 380px;
+  max-width: 380px;
+  min-height: 500px;
+  overflow-x: hidden;
+}
+
+#app {
+  display: block;
+  width: 100%;
+  min-height: 500px;
+}
