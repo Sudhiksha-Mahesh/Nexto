@@ -3,9 +3,12 @@
   import { isSupabaseConfigured } from '../lib/supabase';
   import { syncStatus } from '../lib/syncStatus';
   import { taskStore } from '../store/tasks';
-  import TaskForm from './components/TaskForm.svelte';
-  import TaskList from './components/TaskList.svelte';
-  import ActiveTask from './components/ActiveTask.svelte';
+  import TasksTab from './components/TasksTab.svelte';
+  import StatsTab from './components/StatsTab.svelte';
+
+  type TabId = 'tasks' | 'insights';
+
+  let activeTab: TabId = 'tasks';
 
   onMount(() => {
     if (isSupabaseConfigured()) {
@@ -21,11 +24,44 @@
     <p class="text-xs text-slate-500">Order, without effort.</p>
   </header>
 
-  <TaskForm />
+  <div
+    class="mb-3 flex rounded-lg border border-slate-200 bg-slate-100/80 p-0.5"
+    role="tablist"
+    aria-label="Main sections"
+  >
+    <button
+      type="button"
+      role="tab"
+      aria-selected={activeTab === 'tasks'}
+      class="flex-1 rounded-md px-2 py-1.5 text-xs font-medium transition {activeTab === 'tasks'
+        ? 'bg-white text-slate-900 shadow-sm'
+        : 'text-slate-600 hover:text-slate-900'}"
+      on:click={() => (activeTab = 'tasks')}
+    >
+      Tasks
+    </button>
+    <button
+      type="button"
+      role="tab"
+      aria-selected={activeTab === 'insights'}
+      class="flex-1 rounded-md px-2 py-1.5 text-xs font-medium transition {activeTab === 'insights'
+        ? 'bg-white text-slate-900 shadow-sm'
+        : 'text-slate-600 hover:text-slate-900'}"
+      on:click={() => (activeTab = 'insights')}
+    >
+      Insights
+    </button>
+  </div>
 
-  <TaskList />
-
-  <ActiveTask />
+  {#if activeTab === 'tasks'}
+    <div role="tabpanel" aria-label="Tasks">
+      <TasksTab />
+    </div>
+  {:else}
+    <div role="tabpanel" aria-label="Insights">
+      <StatsTab />
+    </div>
+  {/if}
 
   <footer class="mt-3 border-t border-slate-100 pt-2 text-[10px] leading-relaxed text-slate-500">
     {#if $syncStatus.state === 'local'}
