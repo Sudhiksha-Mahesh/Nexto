@@ -1,5 +1,6 @@
 import { writable } from 'svelte/store';
 import { getSupabase, isSupabaseConfigured } from './supabase';
+import { clearSupabaseAuthStorage } from './chromeAuthStorage';
 
 export type AuthUser = {
   id: string;
@@ -44,10 +45,16 @@ export async function initAuth(): Promise<void> {
     return;
   }
 
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  setFromSessionUser(session?.user ?? null);
+  try {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    setFromSessionUser(session?.user ?? null);
+  } catch (e) {
+    console.warn('[Nexto] auth session parse failed, clearing stored auth session.', e);
+    await clearSupabaseAuthStorage();
+    setFromSessionUser(null);
+  }
 
   supabase.auth.onAuthStateChange((_evt, sessionNext) => {
     setFromSessionUser(sessionNext?.user ?? null);
